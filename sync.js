@@ -64,6 +64,9 @@
         sequence++;
         mutation = null;
       },
+      invalidateReads() {
+        sequence++;
+      },
       beginRead({ afterSave = false } = {}) {
         if (mutation && !afterSave) return null;
         const e = epoch,

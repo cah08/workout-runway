@@ -15,6 +15,7 @@ let today = dateKey(new Date());
 const sync = FitnessSync.createCoordinator();
 let dataReady = false;
 let authEvent = 0;
+let pendingAuthActions = 0;
 let sb,
   user = null,
   profiles = [],
@@ -250,7 +251,17 @@ function updateToday() {
   return true;
 }
 function updateControls() {
-  const editable = !!user && dataReady && !sync.busy && !recoveryMode;
+  const editable =
+    !!user &&
+    dataReady &&
+    !sync.busy &&
+    !recoveryMode &&
+    navigator.onLine !== false;
+  $("confirm").textContent =
+    state(person, selected) === "confirmed"
+      ? "Remove Workout"
+      : "Toggle Workout";
+  window.FitnessPWA?.setBusy(sync.busy || pendingAuthActions > 0);
   for (const id of ["plan", "confirm", "grace", "rest"]) {
     $(id).disabled =
       !editable ||
@@ -262,7 +273,7 @@ function updateControls() {
   $("saveColor").disabled = !editable;
 }
 async function refresh({ afterSave = false } = {}) {
-  if (!user || recoveryMode) return false;
+  if (!user || recoveryMode || navigator.onLine === false) return false;
   const current = sync.beginRead({ afterSave });
   if (!current) return false;
   updateToday();
@@ -313,7 +324,8 @@ async function refresh({ afterSave = false } = {}) {
   }
 }
 async function mutate(write) {
-  if (!user || !dataReady || recoveryMode) return false;
+  if (!user || !dataReady || recoveryMode || navigator.onLine === false)
+    return false;
   const token = sync.beginMutation();
   if (!token) return false;
   const userId = user.id;
@@ -354,6 +366,7 @@ async function act(kind) {
   updateToday();
   if (
     !user ||
+    navigator.onLine === false ||
     !dataReady ||
     sync.busy ||
     person !== ownName() ||
@@ -459,7 +472,9 @@ $("changePasswordForm").onsubmit = async (e) => {
     return;
   }
   $("passwordStatus").textContent = "Updating…";
-  const { error } = await sb.auth.updateUser({ password: p });
+  const { error } = await withAuthAction(() =>
+    sb.auth.updateUser({ password: p }),
+  );
   $("passwordStatus").textContent = error
     ? "Could not update password: " + error.message
     : "Password updated successfully.";
@@ -488,7 +503,7 @@ $("signOut").onclick = async () => {
   sync.reset();
   clearParticipantState();
   updateControls();
-  const { error } = await sb.auth.signOut();
+  const { error } = await withAuthAction(() => sb.auth.signOut());
   if (error) {
     $("syncStatus").textContent = "Could not sign out: " + error.message;
     await refresh();
@@ -514,10 +529,12 @@ function showAuth(session) {
 $("loginForm").onsubmit = async (e) => {
   e.preventDefault();
   $("authStatus").textContent = "Signing in…";
-  const { error } = await sb.auth.signInWithPassword({
-    email: $("email").value.trim(),
-    password: $("password").value,
-  });
+  const { error } = await withAuthAction(() =>
+    sb.auth.signInWithPassword({
+      email: $("email").value.trim(),
+      password: $("password").value,
+    }),
+  );
   if (error) $("authStatus").textContent = error.message;
   else $("password").value = "";
 };
@@ -527,9 +544,11 @@ $("resetPassword").onclick = async () => {
     $("authStatus").textContent = "Enter your email address first.";
     return;
   }
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + location.pathname,
-  });
+  const { error } = await withAuthAction(() =>
+    sb.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname,
+    }),
+  );
   $("authStatus").textContent = error
     ? error.message
     : "If the account exists, a password-reset email will arrive.";
@@ -542,7 +561,9 @@ $("recoveryForm").onsubmit = async (e) => {
     $("recoveryStatus").textContent = "Passwords do not match.";
     return;
   }
-  const { error } = await sb.auth.updateUser({ password: p });
+  const { error } = await withAuthAction(() =>
+    sb.auth.updateUser({ password: p }),
+  );
   $("recoveryStatus").textContent = error
     ? "Could not update: " + error.message
     : "Password updated! You can now return to Fitness Tracker.";
@@ -553,6 +574,23 @@ $("recoveryBack").onclick = () => {
   showAuth({ user });
   showTab("dashboard");
 };
+async function withAuthAction(action) {
+  pendingAuthActions++;
+  updateControls();
+  try {
+    return await action();
+  } finally {
+    pendingAuthActions--;
+    updateControls();
+  }
+}
+window.addEventListener("fitness:connectivity", (event) => {
+  if (!event.detail.online) {
+    sync.invalidateReads();
+    dataReady = false;
+    updateControls();
+  } else resume();
+});
 function resume() {
   updateToday();
   if (document.visibilityState === "visible" && user && !recoveryMode)

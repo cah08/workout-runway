@@ -1,4 +1,4 @@
-name: Reliability tests
+name: Reliability and PWA tests
 on:
   pull_request:
   push:
@@ -19,3 +19,4 @@ jobs:
       - run: npm test
       - run: npx playwright-core install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:pwa
