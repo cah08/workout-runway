@@ -1,7 +1,7 @@
 /* Public application files only. Generated versions are checked in CI. */
 // BEGIN GENERATED PWA ASSETS
-const RELEASE = "835548401751298c";
-const SHELL_HASH = "2ab4395fe5fe6bfb";
+const RELEASE = "a58c18d3b3e86b3e";
+const SHELL_HASH = "8dab6c0da711861d";
 const PUBLIC_ASSETS = [
   "/",
   "/app.js?v=93f5e9c14de421d9",
@@ -9,11 +9,11 @@ const PUBLIC_ASSETS = [
   "/sync.js?v=b8092bf7e22ab168",
   "/pwa.js?v=c51253a1ae48e3f0",
   "/vendor/supabase-2.118.0.min.js?v=bee24fc29228ed5a",
-  "/icons/icon-192.png?v=4bb83e013af96a0c",
-  "/icons/icon-512.png?v=010767bc76dddc3d",
-  "/icons/icon-maskable-512.png?v=a740afb1bd70a417",
-  "/icons/apple-touch-icon.png?v=3bf5d3685304e2e5",
-  "/manifest.webmanifest?v=d079afee1e6aa41c"
+  "/icons/icon-192.png?v=26f533ffeac2e81a",
+  "/icons/icon-512.png?v=de86d4ebaa279915",
+  "/icons/icon-maskable-512.png?v=49126d46b5037e71",
+  "/icons/apple-touch-icon.png?v=123ea645ad227e77",
+  "/manifest.webmanifest?v=3c41764b5769885e"
 ];
 // END GENERATED PWA ASSETS
 const CACHE_PREFIX = "fitness-tracker-public-";
