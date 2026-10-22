@@ -4,16 +4,8 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const os = require("node:os");
-const { execFileSync } = require("node:child_process");
 const { chromium } = require("playwright-core");
 const root = path.join(__dirname, "..");
-const sdkUrl =
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js";
-const sdk = execFileSync(
-  "curl",
-  ["--fail", "--silent", "--show-error", "--max-time", "30", sdkUrl],
-  { maxBuffer: 8 * 1024 * 1024 },
-);
 const deadline = setTimeout(() => {
   console.error("Browser test deadline exceeded");
   process.exit(1);
@@ -21,7 +13,9 @@ const deadline = setTimeout(() => {
 const server = http.createServer((req, res) => {
   const file = path.join(
     root,
-    req.url === "/" ? "index.html" : req.url.slice(1),
+    new URL(req.url, "http://localhost").pathname === "/"
+      ? "index.html"
+      : new URL(req.url, "http://localhost").pathname.slice(1),
   );
   if (!file.startsWith(root + path.sep)) {
     res.writeHead(403).end();
@@ -69,6 +63,7 @@ const profiles = [
     async function scenario(name, run) {
       const context = await browser.newContext({
         timezoneId: "America/New_York",
+        serviceWorkers: "block",
       });
       const page = await context.newPage(),
         errors = [];
@@ -88,13 +83,6 @@ const profiles = [
       page.on("console", (msg) => {
         if (process.env.DEBUG_BROWSER) console.log(msg.type(), msg.text());
       });
-      await page.route(sdkUrl, (r) =>
-        r.fulfill({
-          contentType: "application/javascript",
-          body: sdk,
-          headers: { "access-control-allow-origin": "*" },
-        }),
-      );
       await page.route(
         "https://plgcecwxluqcfzlrnzfo.supabase.co/**",
         async (route) => {
@@ -349,6 +337,46 @@ const profiles = [
           /Save outcome was uncertain/,
         );
         assert.equal(await page.evaluate(() => dataReady), true);
+      },
+    );
+    await scenario(
+      "workout button toggles its label across dates and add/remove saves",
+      async (page, state) => {
+        await page.evaluate(() => {
+          selected = "2026-01-01";
+          showTab("calendar");
+        });
+        assert.equal(
+          await page.locator("#confirm").textContent(),
+          "Toggle Workout",
+        );
+        await page.click("#confirm");
+        await page.waitForFunction(
+          () => !sync.busy && state("Chris", "2026-01-01") === "confirmed",
+        );
+        assert.equal(
+          await page.locator("#confirm").textContent(),
+          "Remove Workout",
+        );
+        await page.click('[data-date="2026-01-02"]');
+        assert.equal(
+          await page.locator("#confirm").textContent(),
+          "Toggle Workout",
+        );
+        await page.click('[data-date="2026-01-01"]');
+        assert.equal(
+          await page.locator("#confirm").textContent(),
+          "Remove Workout",
+        );
+        await page.click("#confirm");
+        await page.waitForFunction(
+          () => !sync.busy && state("Chris", "2026-01-01") === "rest",
+        );
+        assert.equal(
+          await page.locator("#confirm").textContent(),
+          "Toggle Workout",
+        );
+        assert.equal(state.writes, 2);
       },
     );
     await scenario(

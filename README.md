@@ -13,8 +13,10 @@ write tests.
 - `app.js`: authentication, rendering, refresh coordination, and mutations.
 - `scoring.js`: pure scoring, calendar-date, and color-validation helpers.
 - `sync.js`: paginated reads and session/request/mutation coordination.
+- `pwa.js`, `sw.js`, `manifest.webmanifest`, `icons/`: installation, public-shell caching, offline notices, and user-controlled updates.
+- `vendor/`: the unchanged pinned Supabase SDK and license.
 
-No PWA, service worker, schema migration, or permission change is included.
+PWA behavior, release instructions, and the Android/iPhone manual test checklist are documented in [docs/PWA.md](docs/PWA.md). No schema migration or permission change is included.
 
 ## Automated checks
 
@@ -26,15 +28,16 @@ npm run check
 npm test
 npx playwright-core install --with-deps chromium
 npm run test:browser
+npm run test:pwa
 ```
 
 To use an existing Chromium installation, set `CHROMIUM_PATH` to its executable
 path (for example `/usr/bin/chromium`) instead of installing another browser.
-Browser tests require `curl` and HTTPS access to cdn.jsdelivr.net to obtain the
-exact pinned SDK. The SDK is executed with its integrity attribute intact; all
+Browser tests use the locally hosted, pinned SDK with its integrity attribute intact; all
 Supabase endpoints are intercepted with fixtures. No production authentication,
 password-reset email, or database request is performed. Unit tests need no network.
-CI runs syntax, unit, and browser checks on pull requests.
+CI runs syntax, generated-PWA consistency, unit, and both browser suites on pull requests.
+After changing any public app file, run `npm run prepare:pwa` and commit its outputs.
 
 ## Reliability behavior and limits
 
